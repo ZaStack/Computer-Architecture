@@ -2,12 +2,6 @@
 
 import sys
 
-LDI = 0b10000010
-HLT = 0b00000001
-PRN = 0b01000111
-MUL = 0b10100010
-ADD = 0b10100000
-SUB = 0b10100001
 class CPU:
     """Main CPU class."""
 
@@ -17,40 +11,86 @@ class CPU:
         self.reg = [0] * 8
         self.ram = [0] * 256
         self.running = True
+        self.sp = 7
+        self.reg[self.sp] = 0xf4
+        self.branchtable = {
+            0b10000010: self.handle_ldi,
+            0b00000001: self.handle_hlt,
+            0b01000111: self.handle_prn,
+            0b10100010: self.handle_mul,
+            0b10100000: self.handle_add,
+            0b10100001: self.handle_sub,
+            0b01000110: self.handle_pop,
+            0b01000101: self.handle_push
+        }
+
+    def ram_read(self, MAR):
+        return self.ram[MAR]
+
+    def ram_write(self, MAR, MDR):
+        self.ram[MAR] = MDR
+
+    def handle_ldi(self, operand_a, operand_b):
+        self.reg[operand_a] = operand_b
+        self.pc += 3
+
+    def handle_hlt(self, operand_a, operand_b):
+        self.running = False
+        self.pc += 1
+
+    def handle_prn(self, operand_a, operand_b):
+        print(self.reg[operand_a])
+        self.pc += 2
+
+    def handle_mul(self, operand_a, operand_b):
+        self.alu('MUL', operand_a, operand_b)
+        self.pc += 3
+
+
+    def handle_add(self, operand_a, operand_b):
+        self.alu('ADD', operand_a, operand_b)
+        self.pc += 3
+
+    def handle_sub(self, operand_a, operand_b):
+        self.alu('SUB', operand_a, operand_b)
+        self.pc += 3
+
+    def handle_pop(self, operand_a, operand_b):
+        value = self.ram[self.reg[self.sp]]
+        self.reg[self.ram[self.pc + 1]] = value
+        self.reg[self.sp] += 1
+        self.pc += 2
+
+    def handle_push(self, operand_a, operand_b):
+        self.reg[self.sp] -= 1
+        value = self.reg[self.ram[self.pc + 1]]
+        self.ram[self.reg[self.sp]] = value
+        self.pc += 2
 
     def load(self):
         """Load a program into memory."""
-
-        filename = sys.argv[1]
         address = 0
+        try:
+            with open(sys.argv[1]) as f:
+                for line in f:
+                    try:
+                        line = line.split('#', 1)[0].strip()
+                        self.ram[address] = int(line, 2)
+                        address += 1
+                    except ValueError:
+                        pass
+        except FileNotFoundError:
+            print(f"Couldn't find file {sys.argv[1]}")
+            sys.exit(1)
 
-        # For now, we've just hardcoded a program:
-
-        with open(filename) as f:
-            for line in f:
-                line = line.split("#")
-                line = line[0].strip()
-                if line == '':
-                    continue
-                else:
-                    self.ram[address] = int(line, 2)
-                    address += 1
-
-    def ram_read(self, mar):
-        return self.ram[mar]
-
-    def ram_write(self, mar, mdr):
-        self.ram[mar] = mdr
-    
-
-    def alu(self, op, reg_a, reg_b):
+    def alu(self, op, operand_a, operand_b):
         """ALU operations."""
-
         if op == "ADD":
-            self.reg[reg_a] += self.reg[reg_b]
+            self.reg[operand_a] += self.reg[operand_b]
         elif op == "MUL":
-            self.reg[reg_a] *= self.reg[reg_b]
-        #elif op == "SUB": etc
+            self.reg[operand_a] *= self.reg[operand_b]
+        elif op == "SUB":
+            self.reg[operand_a] -= self.reg[operand_b]
         else:
             raise Exception("Unsupported ALU operation")
 
@@ -76,24 +116,12 @@ class CPU:
 
     def run(self):
         """Run the CPU."""
-        self.load()
         while self.running:
             opcode = self.ram[self.pc]
-            reg_a = self.ram_read(self.pc + 1)
-            reg_b = self.ram_read(self.pc + 2)
+            operand_a = self.ram_read(self.pc + 1)
+            operand_b = self.ram_read(self.pc + 2)
 
-            if opcode == HLT:
-                self.running = False
-                self.pc += 1
-            elif opcode == LDI:
-                self.reg[reg_a] = reg_b
-                self.pc += 3
-            elif opcode == PRN:
-                print(self.reg[reg_a])
-                self.pc += 2
-            elif opcode == MUL:
-                self.reg[reg_a] *= self.reg[reg_b]
-                self.pc += 3
-            else:
-                print(f'Nope. Who knows why.')
-                self.pc += 1
+            try:
+                self.branchtable[opcode](operand_a, operand_b)
+            except:
+                print(f'Unknown command: {opcode}')
