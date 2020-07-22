@@ -12,14 +12,14 @@ class CPU:
         self.ram = [0] * 256
         self.running = True
         self.sp = 7
-        self.reg[self.sp] = 0xF4
+        self.reg[self.sp] = 0xf4
         self.branchtable = {
-            0b10000010: self.LDI,
-            0b00000001: self.HLT,
-            0b01000111: self.PRN,
-            0b10100010: self.MUL,
-            0b10100000: self.ADD,
-            0b10100001: self.SUB
+            0b10000010: self.handle_ldi,
+            0b00000001: self.handle_hlt,
+            0b01000111: self.handle_prn,
+            0b10100010: self.handle_mul,
+            0b10100000: self.handle_add,
+            0b10100001: self.handle_sub
         }
 
     def ram_read(self, MAR):
@@ -28,27 +28,28 @@ class CPU:
     def ram_write(self, MAR, MDR):
         self.ram[MAR] = MDR
 
-    def LDI(self, operand_a, operand_b):
+    def handle_ldi(self, operand_a, operand_b):
         self.reg[operand_a] = operand_b
         self.pc += 3
 
-    def HLT(self):
+    def handle_hlt(self):
         self.running = False
         self.pc += 1
 
-    def PRN(self, operand_a):
+    def handle_prn(self, operand_a, operand_b):
         print(self.reg[operand_a])
+        print(operand_b)
         self.pc += 2
 
-    def MUL(self, operand_a, operand_b):
+    def handle_mul(self, operand_a, operand_b):
         self.alu('MUL', operand_a, operand_b)
         self.pc += 3
 
-    def ADD(self, operand_a, operand_b):
+    def handle_add(self, operand_a, operand_b):
         self.alu('ADD', operand_a, operand_b)
         self.pc += 3
 
-    def SUB(self, operand_a, operand_b):
+    def handle_sub(self, operand_a, operand_b):
         self.alu('SUB', operand_a, operand_b)
         self.pc += 3
 
@@ -60,9 +61,8 @@ class CPU:
             with open(sys.argv[1]) as f:
                 for line in f:
                     try:
-                        line = line.split('#', 1)[0]
-                        line = int(line, 2)
-                        self.ram[address] = line
+                        line = line.split('#', 1)[0].strip()
+                        self.ram[address] = int(line, 2)
                         address += 1
                     except ValueError:
                         pass
@@ -112,4 +112,4 @@ class CPU:
                 self.branchtable[opcode](operand_a, operand_b)
             except:
                 print(f'Unknown command: {opcode}')
-                self.HLT()
+                self.handle_hlt()
