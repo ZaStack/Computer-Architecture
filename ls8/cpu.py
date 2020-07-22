@@ -32,18 +32,18 @@ class CPU:
         self.reg[operand_a] = operand_b
         self.pc += 3
 
-    def handle_hlt(self):
+    def handle_hlt(self, operand_a, operand_b):
         self.running = False
         self.pc += 1
 
     def handle_prn(self, operand_a, operand_b):
         print(self.reg[operand_a])
-        print(operand_b)
         self.pc += 2
 
     def handle_mul(self, operand_a, operand_b):
         self.alu('MUL', operand_a, operand_b)
         self.pc += 3
+
 
     def handle_add(self, operand_a, operand_b):
         self.alu('ADD', operand_a, operand_b)
@@ -112,4 +112,3 @@ class CPU:
                 self.branchtable[opcode](operand_a, operand_b)
             except:
                 print(f'Unknown command: {opcode}')
-                self.handle_hlt()
