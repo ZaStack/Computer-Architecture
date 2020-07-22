@@ -19,7 +19,9 @@ class CPU:
             0b01000111: self.handle_prn,
             0b10100010: self.handle_mul,
             0b10100000: self.handle_add,
-            0b10100001: self.handle_sub
+            0b10100001: self.handle_sub,
+            0b01000110: self.handle_pop,
+            0b01000101: self.handle_push
         }
 
     def ram_read(self, MAR):
@@ -53,6 +55,17 @@ class CPU:
         self.alu('SUB', operand_a, operand_b)
         self.pc += 3
 
+    def handle_pop(self, operand_a, operand_b):
+        value = self.ram[self.reg[self.sp]]
+        self.reg[self.ram[self.pc + 1]] = value
+        self.reg[self.sp] += 1
+        self.pc += 2
+
+    def handle_push(self, operand_a, operand_b):
+        self.reg[self.sp] -= 1
+        value = self.reg[self.ram[self.pc + 1]]
+        self.ram[self.reg[self.sp]] = value
+        self.pc += 2
 
     def load(self):
         """Load a program into memory."""
