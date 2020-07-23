@@ -21,7 +21,9 @@ class CPU:
             0b10100000: self.handle_add,
             0b10100001: self.handle_sub,
             0b01000110: self.handle_pop,
-            0b01000101: self.handle_push
+            0b01000101: self.handle_push,
+            0b01010000: self.handle_call,
+            0b00010001: self.handle_ret
         }
 
     def ram_read(self, MAR):
@@ -56,16 +58,42 @@ class CPU:
         self.pc += 3
 
     def handle_pop(self, operand_a, operand_b):
+        #grab value from ram
         value = self.ram[self.reg[self.sp]]
+        #store in reg
         self.reg[self.ram[self.pc + 1]] = value
+        #increment sp
         self.reg[self.sp] += 1
         self.pc += 2
 
     def handle_push(self, operand_a, operand_b):
+        #decrement sp
         self.reg[self.sp] -= 1
+        #get value from reg
         value = self.reg[self.ram[self.pc + 1]]
+        #store in ram
         self.ram[self.reg[self.sp]] = value
         self.pc += 2
+
+    def handle_call(self, operand_a, operand_b):
+        #Get address of next opcode
+        ret_addr = self.pc + 2
+        #push onto stack
+        self.reg[self.sp] -= 1
+        push_addr = self.reg[self.sp]
+        self.ram[push_addr] = ret_addr
+        #Set pc to subroutine address
+        reg_num = self.ram[self.pc + 1]
+        subr_addr = self.reg[reg_num]
+        self.pc = subr_addr
+
+    def handle_ret(self, operand_a, operand_b):
+        #Get return address from top of stack
+        pop_addr = self.reg[self.sp]
+        ret_addr = self.ram[pop_addr]
+        self.reg[self.sp] += 1
+        #Set pc to return address
+        self.pc = ret_addr
 
     def load(self):
         """Load a program into memory."""
